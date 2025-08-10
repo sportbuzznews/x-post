@@ -3,13 +3,11 @@ import random
 import requests
 from bs4 import BeautifulSoup
 import tweepy
+import urllib.parse
 
-# --- FUNGSI UNTUK SCRAPING YAHOO SPORTS (DIPERBAIKI) ---
+# --- FUNGSI BARU UNTUK SCRAPING YAHOO SPORTS ---
 def scrape_yahoo_sports():
-    """
-    Mengambil 5 artikel teratas dari Yahoo Sports, lalu memilih satu secara acak.
-    Selector HTML telah diperbarui untuk menyesuaikan dengan struktur situs terbaru.
-    """
+    """Mengambil judul dan gambar artikel secara acak dari Yahoo Sports."""
     url = "https://sports.yahoo.com/"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -19,34 +17,23 @@ def scrape_yahoo_sports():
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # --- SELEKTOR BARU ---
-        # Mencari semua item dalam 'stream' yang memiliki link dan judul di dalamnya.
-        # Struktur baru menggunakan div dengan atribut data-test-locator="stream-item"
-        all_articles = soup.find_all('div', {'data-test-locator': 'stream-item'})
-
-        if not all_articles:
-            print("Peringatan: Tidak ada artikel yang ditemukan. Mungkin struktur website berubah lagi.")
+        # Cari semua artikel yang ada di halaman utama
+        articles = soup.find_all('li', {'class': 'js-stream-content'})
+        
+        if not articles:
+            print("Peringatan: Tidak ada artikel yang ditemukan. Mungkin struktur website berubah.")
             return None, None
 
-        # Ambil 5 artikel teratas dari daftar
-        top_5_articles = all_articles[:5]
-        print(f"Berhasil menemukan {len(all_articles)} artikel. Mengambil 5 teratas dan memilih satu secara acak...")
+        # Pilih satu artikel secara acak
+        selected_article = random.choice(articles)
 
-        # Pilih satu artikel secara acak dari 5 teratas
-        selected_article = random.choice(top_5_articles)
-
-        # Ambil judul dari tag 'a' di dalam tag 'h3'
-        title_element = selected_article.find('h3', {'class': 'Mb(5px)'})
+        # Ambil judul dari tag 'h3' di dalam artikel
+        title_element = selected_article.find('h3')
         title = title_element.get_text(strip=True) if title_element else "Judul Tidak Ditemukan"
         
-        # Ambil gambar dari tag 'img'
+        # Ambil gambar dari tag 'img' di dalam artikel
         image_element = selected_article.find('img')
         image_url = image_element['src'] if image_element and image_element.has_attr('src') else None
-
-        # Memastikan URL gambar valid
-        if image_url and not image_url.startswith('http'):
-             print(f"Peringatan: URL gambar tidak valid atau tidak lengkap: {image_url}")
-             image_url = None
 
         print(f"Artikel yang dipilih: '{title}'")
         print(f"URL Gambar: {image_url}")
@@ -119,18 +106,18 @@ def post_to_x(text_to_post, image_url=None):
     except Exception as e:
         print(f"Error saat memposting ke X.com: {e}")
 
-# --- FUNGSI UTAMA ---
+# --- FUNGSI UTAMA (DIPERBAIKI) ---
 if __name__ == "__main__":
     print("Memulai proses auto-posting...")
     
     # Panggil fungsi scrape Yahoo Sports
     article_title, image_url = scrape_yahoo_sports()
     
-    if article_title and article_title != "Judul Tidak Ditemukan":
+    if article_title:
         random_link = get_random_link()
         
         if random_link:
-            # Gabungkan judul artikel dan link acak tanpa enter
+            # Gabungkan judul artikel dan link acak
             final_post_text = f"{article_title} {random_link}"
             
             print("--- POSTINGAN FINAL ---")
@@ -140,7 +127,5 @@ if __name__ == "__main__":
             
             # Kirim teks gabungan dan URL gambar ke fungsi posting
             post_to_x(final_post_text, image_url)
-    else:
-        print("Gagal mendapatkan judul artikel. Proses dihentikan.")
-
+    
     print("Proses selesai.")
